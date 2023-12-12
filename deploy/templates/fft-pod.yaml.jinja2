@@ -7,7 +7,7 @@ spec:
   schedulerName: {{ scheduler_name }}
   containers:
     - name: fft
-      image: cuso4/fft
+      image: wd312/fft
       command: ["./fft.py"]
       args: ["{{ n }}"]
       imagePullPolicy: IfNotPresent
