@@ -3,7 +3,6 @@
 # Purpose: Run the scheduler with a given number of schedulers and jobs
 
 from jinja2 import Environment, FileSystemLoader
-import pytermgui as ptg
 import time
 from enum import Enum
 import os
@@ -45,7 +44,6 @@ def run_ctrler():
 def run_sched():
     os.system('''
         kubectl apply -f deploy/my-scheduler.yaml
-    
     ''')
 
 

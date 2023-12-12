@@ -2,7 +2,8 @@
 
 import datetime
 import json
-import os, sys
+import os
+import sys
 
 from kubernetes import client, config
 
@@ -70,8 +71,6 @@ for i in ret.items:
                     # else:
                     if sn in d:
                         m[sched_name][sn] = d[sn]
-
-
 
 name = datetime.datetime.now().isoformat()[:-7].replace(':', '-')
 dir = f"measure/data/{name}"

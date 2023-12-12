@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import datetime
+import os
+
 from kubernetes import client, config
-import os, datetime
 
 # Configs can be set in Configuration class directly or using helper utility
 config.load_kube_config()

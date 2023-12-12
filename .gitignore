@@ -47,3 +47,5 @@ go.work
 
 measure/data
 __pycache__/
+
+.idea
