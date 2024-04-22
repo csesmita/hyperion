@@ -42,8 +42,8 @@ spec:
         name: my-controller
         resources:
           requests:
-            cpu: 100m
-        image: wd312/my-ctl:latest
+            cpu: "100m"
+        image: sv440/my-ctl:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 2379

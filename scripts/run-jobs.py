@@ -6,15 +6,18 @@ This script is used to run jobs on the cluster.
 
 '''
 
+import getmetrics
 import math
 import os
-from contextlib import suppress
+import random
+import argparse
 
+from contextlib import suppress
+from datetime import datetime
 from inputimeout import TimeoutOccurred, inputimeout
 from jinja2 import Environment, FileSystemLoader
 from rich.console import Console
 from scipy.optimize import fsolve
-
 
 def install(num_jobs: int):
     t = 0
@@ -108,34 +111,35 @@ def render_pod_fft(num_pods: int, scheduler_name: str) -> float:
     template = environment.get_template("fft-pod.yaml.jinja2")
     max_st = 0
     with open('deploy/fft-pod.yaml', 'w') as out_file:
-        with open('deploy/google-cluster.csv', 'r') as usage:
-            i = 0
-            for line in usage:
-                c = float(line.split(',')[2]) * 1000
-                cpu = int(c)
-                if cpu < 1:
-                    continue
-                k = 0.34293475
+        i = 0
+        while True:
+            random.seed(datetime.now().timestamp())
+            #Confine the cpu request to within 1000m.
+            c= random.uniform(0, 1) * 1000
+            cpu = int(c)
+            if cpu < 1:
+                continue
+            k = 0.34293475
 
-                def func(x):
-                    return k * x * math.log(x) - c * 60 * 10e9
+            def func(x):
+                return k * x * math.log(x) - c * 60 * 10e9
 
-                solution = fsolve(func, 1000000000)
-                n = int(solution[0] / 1e5)
-                max_st = max(max_st, n)
+            solution = fsolve(func, 1000000000)
+            n = int(solution[0] / 1e5)
+            max_st = max(max_st, n)
 
-                content = template.render(
-                    scheduler_name=scheduler_name,
-                    name=f'fft-{n}-{i}',
-                    cpu=cpu,
-                    n=n,
-                )
-                out_file.write(content)
-                out_file.write('\n---\n')
+            content = template.render(
+                scheduler_name=scheduler_name,
+                name=f'fft-{n}-{i}',
+                cpu=cpu,
+                n=n,
+            )
+            out_file.write(content)
+            out_file.write('\n---\n')
 
-                i += 1
-                if i >= num_pods:
-                    break
+            i += 1
+            if i >= num_pods:
+                break
 
     return max_st
 
@@ -256,37 +260,53 @@ def run_jobs(scheduler_name: str, job_name: str):
     console.print('done', style='blue')
 
 
-def run_pods(scheduler_name: str, pod_name: str):
+def run_pods(scheduler_name: str, pod_name: str, num_scheds: int, jobs_to_sched_ratio: int, top: int):
     console = Console()
-    job_factor = 9 * 12
-    for i in range(5, 10):
-        console.print(
-            f'Running {i * job_factor} {pod_name} pods', style='green bold')
-        if pod_name == 'bbox':
-            render_pod_bbox(i * job_factor, scheduler_name)
-        elif pod_name == 'pi':
-            render_pod_pi(i * job_factor, scheduler_name)
-        elif pod_name == 'fib':
-            render_pod_fib(i * job_factor, scheduler_name)
-        elif pod_name == 'fft':
-            render_pod_fft(i * job_factor, scheduler_name)
-        else:
-            raise Exception(f'Unknown pod name {pod_name}')
+    num_pods = num_scheds * jobs_to_sched_ratio
+    console.print(
+        f'Running {num_pods} {pod_name} pods', style='green bold')
+    if pod_name == 'bbox':
+        render_pod_bbox(num_pods, scheduler_name)
+    elif pod_name == 'pi':
+        render_pod_pi(num_pods, scheduler_name)
+    elif pod_name == 'fib':
+        render_pod_fib(num_pods, scheduler_name)
+    elif pod_name == 'fft':
+        render_pod_fft(num_pods, scheduler_name)
+    else:
+        raise Exception(f'Unknown pod name {pod_name}')
 
-        wt = 180
-        os.system(f"kubectl apply -f deploy/{pod_name}-pod.yaml")
+    wt = 300
+    os.system(f"kubectl apply -f deploy/{pod_name}-pod.yaml")
 
-        console.print(f'sleeping for {wt} seconds', style='red')
-        with suppress(TimeoutOccurred):
-            inputimeout(prompt=':D', timeout=wt)
+    console.print(f'sleeping for {wt} seconds', style='red')
+    with suppress(TimeoutOccurred):
+        inputimeout(prompt=':D', timeout=wt)
 
-        os.system(f'kubectl delete -f deploy/{pod_name}-pod.yaml')
+    #Get placement and consensus logs
+    getmetrics.MetricsGetter().getmetrics(num_scheds, jobs_to_sched_ratio, top, False)
 
-        with suppress(TimeoutOccurred):
-            inputimeout(prompt=f'waiting after deleting', timeout=60)
+    os.system(f'kubectl delete -f deploy/{pod_name}-pod.yaml')
+
+    with suppress(TimeoutOccurred):
+        inputimeout(prompt=f'waiting after deleting', timeout=60)
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        prog='Run jobs script',
+        description='Actually places the workload',
+        epilog=''
+    )
+
+    parser.add_argument('-s', '--schedulers', type=int,
+                        help='number of schedulers to run')
+    parser.add_argument('-t', '--topology', type=int,
+                        help='topology id, see internal/configs/data')
+    parser.add_argument('-j', '--jobs', type=int,
+                        help='job factor, the job/scheduler ratio, i.e., how many jobs we want per scheduler, default to 1')
+    args = parser.parse_args()
+
     schedulers = ['default-scheduler', 'my-controller']
     scheduler_name = schedulers[0]
     # for _ in range(5):
@@ -294,7 +314,7 @@ def main():
     # run_pods(scheduler_name, 'pi')
     # for _ in range(3):
     #     for sn in schedulers:
-    run_pods(scheduler_name, 'fft')
+    run_pods(scheduler_name, 'fft', args.schedulers, args.jobs, args.topology)
     # run_jobs(scheduler_name, 'pi')
 
 
