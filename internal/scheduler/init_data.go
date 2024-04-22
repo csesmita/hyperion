@@ -26,8 +26,8 @@ func (sched *Scheduler) InitMyConData(l, u, pi float64) {
 		sched.conData[0] = make(map[int]*pb.ConData)
 	}
 
-	// myu, mypi := sched.k8sCpuUsage()
-	myu, mypi := fakeCpuUsage()
+	myu, mypi := sched.k8sCpuUsage()
+	//myu, mypi := fakeCpuUsage()
 	log.WithFields(log.Fields{
 		"my used k8s":     myu,
 		"my capacity k8s": mypi,
