@@ -1,4 +1,4 @@
-DOCKER_USERNAME=wd312
+DOCKER_USERNAME=sv440
 CTRL_IMAGE_NAME=my-ctl
 SCHED_IMAGE_NAME=my-sched
 GO_FLAGS=
@@ -21,12 +21,12 @@ sched: cmd/scheduler/main.go
 	go build ${GO_FLAGS} -o bin/sched $<
 
 build: ctl sched
-	docker build -t ${DOCKER_USERNAME}/my-ctl -f build/package/Dockerfile_ctrl . && \
-	docker build -t ${DOCKER_USERNAME}/my-sched -f build/package/Dockerfile_sched .
+	docker build -t ${DOCKER_USERNAME}/${CTRL_IMAGE_NAME} -f build/package/Dockerfile_ctrl . && \
+	docker build -t ${DOCKER_USERNAME}/${SCHED_IMAGE_NAME} -f build/package/Dockerfile_sched .
 
 
 pushctl: 
-	docker push ${DOCKER_USERNAME}/my-ctl
+	docker push ${DOCKER_USERNAME}/${CTRL_IMAGE_NAME}
 
 pushshed:
-	docker push ${DOCKER_USERNAME}/my-sched
+	docker push ${DOCKER_USERNAME}/${SCHED_IMAGE_NAME}
