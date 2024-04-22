@@ -4,9 +4,10 @@ import datetime
 import json
 import os
 import argparse
+import subprocess
 
 from kubernetes import client, config
-
+from time import sleep
 
 '''
 We analyse the following per pod:
@@ -52,7 +53,7 @@ class MetricsGetter:
     def mkdir(cls) -> str:
         dir = ""
         name = datetime.datetime.now().isoformat()[:-7].replace(':', '-')
-        dir = f"measure/data/{name}"
+        dir = f"measure/data/kubernetes/{name}"
         os.mkdir(dir)
         return dir
 
@@ -144,14 +145,31 @@ class MetricsGetter:
 
         print(f"{fname} is created for all logs")
 
+    def run_util_cmd(self, log_name: str):
+        #print out to file
+        with open(log_name, "a+") as f:
+            subprocess.run(["kubectl", "top", "nodes", "--sort-by", "cpu"], stdout=f)
+
+    # Read the utilization of the nodes 3 times, every 1 mins, and dump into log file.
+    def log_node_util(self, pods: int, jobs: int, top: int):
+        util_log_name = f"{self.dir}/util-{pods}pods-{jobs}jobs-{top}top.txt"
+        UTIL_LOG_INTERVAL = 60
+        count = 0
+        while count < 3:
+                sleep(UTIL_LOG_INTERVAL)
+                self.run_util_cmd(util_log_name)
+                count += 1
+        print(f"{util_log_name} is created for utilization logs")
+
     def getmetrics(self, pods: int, jobs: int, top: int, logs=False):
         # Configs can be set in Configuration class directly or using helper utility
         self.get_k8s()
         metrics = {}
         if logs:
             self.read_all_log(pods, jobs, top)
-        self.read_con(pods, jobs, top, metrics)
-        self.read_pl(pods, jobs, top, metrics)
+        #self.read_con(pods, jobs, top, metrics)
+        #self.read_pl(pods, jobs, top, metrics)
+        self.log_node_util(pods, jobs, top)
         self.reset_k8s()
 
     def get_k8s(self):

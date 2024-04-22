@@ -128,15 +128,6 @@ def main():
 
     os.system('kubectl config set-context --current --namespace=dist-sched')
 
-    start_sched = 500
-    end_sched = 1000
-    if len(args.schedulers) > 1:
-        start_sched = args.schedulers[0]
-        end_sched = args.schedulers[1]
-    elif len(args.schedulers) == 1:
-        start_sched = args.schedulers[0]
-        end_sched = start_sched + 100
-
     for _ in range(args.run):
         metrics_getter = None
         for sched in args.schedulers:
@@ -160,7 +151,7 @@ def main():
                             time.sleep(1)
                     except KeyboardInterrupt:
                         print("Keyboard interrupt detected, waking up")
-                    if mode == Mode.PROD or args.logs:
+                    if mode == Mode.PROD and args.logs:
                         metrics_getter = getmetrics.MetricsGetter(
                         ) if not metrics_getter else metrics_getter
                         metrics_getter.getmetrics(sched, jobs, top, args.logs)
